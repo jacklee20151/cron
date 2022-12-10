@@ -112,6 +112,23 @@ func TestStopCausesJobsToNotRun(t *testing.T) {
 	}
 }
 
+func TestStopCausesJobsToNotRunById(t *testing.T) {
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
+	cron := newWithSeconds()
+	cron.Start()
+	cron.Stop()
+	cron.AddFuncById("fc27bd53-51ff-424a-a20e-4630fd821698", "* * * * * ?", func() { wg.Done() })
+
+	select {
+	case <-time.After(OneSecond):
+		// No job ran!
+	case <-wait(wg):
+		t.Fatal("expected stopped cron does not run any job")
+	}
+}
+
 // Add a job, start cron, expect it runs.
 func TestAddBeforeRunning(t *testing.T) {
 	wg := &sync.WaitGroup{}
@@ -119,6 +136,23 @@ func TestAddBeforeRunning(t *testing.T) {
 
 	cron := newWithSeconds()
 	cron.AddFunc("* * * * * ?", func() { wg.Done() })
+	cron.Start()
+	defer cron.Stop()
+
+	// Give cron 2 seconds to run our job (which is always activated).
+	select {
+	case <-time.After(OneSecond):
+		t.Fatal("expected job runs")
+	case <-wait(wg):
+	}
+}
+
+func TestAddBeforeRunningById(t *testing.T) {
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
+	cron := newWithSeconds()
+	cron.AddFuncById("35c8e2fa-0859-494c-95d5-c3b8da6522c5", "* * * * * ?", func() { wg.Done() })
 	cron.Start()
 	defer cron.Stop()
 
@@ -139,6 +173,22 @@ func TestAddWhileRunning(t *testing.T) {
 	cron.Start()
 	defer cron.Stop()
 	cron.AddFunc("* * * * * ?", func() { wg.Done() })
+
+	select {
+	case <-time.After(OneSecond):
+		t.Fatal("expected job runs")
+	case <-wait(wg):
+	}
+}
+
+func TestAddWhileRunningById(t *testing.T) {
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
+	cron := newWithSeconds()
+	cron.Start()
+	defer cron.Stop()
+	cron.AddFuncById("6d2108c6-8d69-42d8-8075-951e53b04ac7", "* * * * * ?", func() { wg.Done() })
 
 	select {
 	case <-time.After(OneSecond):
